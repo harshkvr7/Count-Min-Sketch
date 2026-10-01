@@ -7,13 +7,11 @@ private:
     size_t width;
     size_t depth;
 
-    int* sketch;
+    uint64_t* sketch;
 
     std::mutex sketchMutex;
 
-    int p = 31;
-
-    int getRowHash(int row, std::string item)
+    size_t getRowHash(size_t row, const std::string& item)
     {
         size_t hash1 = std::hash<std::string>{}(item);
     
@@ -35,32 +33,49 @@ private:
 
             std::cout << std::endl;
         }
+
+        for(size_t col = 0; col < width; col++)
+        {
+            std::cout << '-';
+        }
+
+        std::cout << std::endl;
     }
 
 public:
-    CountMinSketch(int _width, int _depth) : width(_width), depth(_depth)
+    // constructor, creates a count-min sketch with width columns (buckets) and depth rows (hash functions).
+    CountMinSketch(size_t _width, size_t _depth) : width(_width), depth(_depth)
     {
-        sketch = new int[width * depth]();
+        sketch = new uint64_t[width * depth]();
     }
 
-    void Insert(std::string item)
+    ~CountMinSketch() 
+    { 
+        delete[] sketch; 
+    }
+
+    // inserts the specified item into the count-min sketch.
+    void Insert(const std::string& item)
     {
         const std::lock_guard<std::mutex> lock(sketchMutex);
         
         for(size_t row = 0; row < depth; row++)
         {
-            int hash = getRowHash(row, item);
+            size_t hash = getRowHash(row, item);
 
 
             sketch[row * width + hash]++;
         }
 
-        printTable();
+        //printTable();
     }
 
-    int Count(std::string item)
+    // returns the estimated frequency of the item.
+    uint64_t Count(const std::string& item)
     {
-        int res = INT_MAX;
+        uint64_t res = UINT64_MAX;
+        
+        const std::lock_guard<std::mutex> lock(sketchMutex);
 
         for(size_t row = 0; row < depth; row++)
         {
@@ -72,8 +87,11 @@ public:
         return res;
     }
 
+    // resets the data structure from previous streams.
     void Clear()
     {
+        const std::lock_guard<std::mutex> lock(sketchMutex);
+
         for(size_t row = 0; row < depth; row++)
         {
             for(size_t col = 0; col < width; col++)
@@ -81,14 +99,55 @@ public:
                 sketch[row * width + col] = 0;
             }
         }
+
+        //printTable();
     }
 
+    // creates a new sketch by combining counter values from two compatible sketches.
     void Merge(CountMinSketch &other)
     {
+        if (width != other.width || depth != other.depth)
+        {
+            throw std::invalid_argument("Cannot merge sketches of different dimensions.");
+        }
 
+        std::scoped_lock lock(sketchMutex, other.sketchMutex);
+
+        for (size_t i = 0; i < (width * depth); i++)
+        {
+            sketch[i] += other.sketch[i];
+        }
     }
 
-    //std::vector<string> TopK(int k, &candidates)
+    // returns the k candidates with the most estimated counts.
+    std::vector<std::string> TopK(size_t k, std::vector<std::string>& candidates)
+    {
+        std::priority_queue<std::pair<uint64_t, std::string>, std::vector<std::pair<uint64_t, std::string>>, std::greater<std::pair<uint64_t, std::string>>> min_heap;
+
+        for (const std::string& item : candidates)
+        {
+            uint64_t current_count = Count(item); 
+
+            min_heap.push({current_count, item});
+
+            if (min_heap.size() > k)
+            {
+                min_heap.pop(); 
+            }
+        }
+
+        std::vector<std::string> result;
+
+        while (!min_heap.empty())
+        {
+            result.push_back(min_heap.top().second);
+            min_heap.pop();
+        }
+
+        std::reverse(result.begin(), result.end());
+
+        return result;
+    }
 };
 
 
