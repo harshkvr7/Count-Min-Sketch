@@ -58,7 +58,7 @@ public:
         printTable();
     }
 
-    int Count(std::string &item)
+    int Count(std::string item)
     {
         int res = INT_MAX;
 

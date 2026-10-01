@@ -5,4 +5,6 @@ int main()
     CountMinSketch* filter = new CountMinSketch(20, 5);
 
     filter->Insert("harsh");
+
+    std::cout << filter->Count("harsh") << std::endl;
 }
