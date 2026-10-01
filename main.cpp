@@ -1,0 +1,8 @@
+#include "count_min_sketch.hpp"
+
+int main()
+{
+    CountMinSketch* filter = new CountMinSketch(20, 5);
+
+    filter->Insert("harsh");
+}
