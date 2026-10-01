@@ -14,6 +14,6 @@ int main()
     filter->Insert("window");
     filter->Insert("harsh");
 
-    std::cout << filter->Count("waymen") << std::endl;
+    std::cout << filter->Count("window") << std::endl;
     std::cout << filter->Count("harsh") << std::endl;
 }
